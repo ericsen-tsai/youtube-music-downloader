@@ -1,7 +1,6 @@
-import fs from "fs";
 import ytdl from "ytdl-core";
-import { readFile } from "fs/promises";
 import { type VideoFormat } from "@/app/utils/convertFileFormat";
+import { PassThrough } from "stream";
 
 export type GetFileResponse = {
   fileBuffer: Buffer;
@@ -14,47 +13,44 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const url = decodeURI(searchParams.get("url") ?? "");
-  let filename = "";
 
   try {
     const info = await ytdl.getInfo(url ?? "");
     const targetFormat = info.formats.find(
       (format) => format.container === "mp4",
     );
-    filename = `./tmp.${targetFormat?.container ?? ""}`;
-    const outputStream: fs.WriteStream = fs.createWriteStream(filename);
 
-    ytdl
-      .downloadFromInfo(info, {
-        format: info.formats.find(
-          (format) => format.hasAudio && !format.hasVideo,
-        ),
-      })
-      .pipe(outputStream);
+    const outputBuffer = await new Promise<Buffer>((resolve, reject) => {
+      const chunks: Uint8Array[] = [];
 
-    await new Promise((resolve, reject) => {
-      outputStream.on("finish", () =>
-        resolve(console.log("Download finished!")),
-      );
-      outputStream.on("error", (err) => {
+      const passThroughStream = new PassThrough();
+
+      passThroughStream.on("data", (chunk: Uint8Array) => chunks.push(chunk));
+      passThroughStream.on("end", () => {
+        console.log("Download complete.");
+        resolve(Buffer.concat(chunks));
+      });
+      passThroughStream.on("error", (err) => {
         console.log(err);
         reject(err);
       });
+
+      ytdl
+        .downloadFromInfo(info, {
+          format: info.formats.find(
+            (format) => format.hasAudio && !format.hasVideo,
+          ),
+        })
+        .pipe(passThroughStream);
     });
 
-    const fileBuffer = await readFile(filename);
-    const fileBufferCopy = Buffer.from(fileBuffer);
-
-    // fs.unlinkSync(filename);
-
     return Response.json({
-      fileBuffer: fileBufferCopy,
+      fileBuffer: outputBuffer,
       fileExtension: targetFormat?.container,
       videoTitle: info.videoDetails.title,
     });
   } catch (error) {
     console.error(error);
-    // fs.unlinkSync(filename);
     return Response.json({ error: "Conversion failed." });
   }
 }
