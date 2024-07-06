@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     const targetFormat = info.formats.find(
       (format) => format.container === "mp4",
     );
-    filename = `tmp.${targetFormat?.container ?? ""}`;
+    filename = `./tmp.${targetFormat?.container ?? ""}`;
     const outputStream: fs.WriteStream = fs.createWriteStream(filename);
 
     ytdl
