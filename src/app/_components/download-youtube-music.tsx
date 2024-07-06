@@ -32,6 +32,7 @@ export function DownloadYoutubeMusic() {
       console.error(e);
     } finally {
       setIsPending(false);
+      setVideoUrl("");
     }
   };
 
