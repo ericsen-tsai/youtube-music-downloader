@@ -45,7 +45,7 @@ export async function GET(request: Request) {
     const fileBuffer = await readFile(filename);
     const fileBufferCopy = Buffer.from(fileBuffer);
 
-    fs.unlinkSync(filename);
+    // fs.unlinkSync(filename);
 
     return Response.json({
       fileBuffer: fileBufferCopy,
@@ -54,7 +54,7 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error(error);
-    fs.unlinkSync(filename);
+    // fs.unlinkSync(filename);
     return Response.json({ error: "Conversion failed." });
   }
 }
